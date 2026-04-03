@@ -1,0 +1,33 @@
+name: fibonacci_game
+description: A Fibonacci sequence guessing game with leaderboard.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # HTTP client for backend communication
+  http: ^1.2.0
+
+  # State management: Provider chosen for simplicity.
+  # For an MVP with 3 screens and straightforward game state,
+  # Provider offers a clean ChangeNotifier pattern without Bloc/Riverpod complexity.
+  provider: ^6.1.2
+
+  # Google Fonts for better typography
+  google_fonts: ^6.2.1
+
+  # Intl for date formatting
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
