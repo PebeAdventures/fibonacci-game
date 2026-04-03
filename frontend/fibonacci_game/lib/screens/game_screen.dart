@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../l10n/app_strings.dart';
 import '../providers/game_provider.dart';
+import '../providers/language_provider.dart';
 import '../models/game_state.dart';
 import '../utils/app_theme.dart';
 import '../widgets/lives_display.dart';
@@ -10,34 +12,24 @@ import '../widgets/answer_feedback_banner.dart';
 import '../widgets/score_display.dart';
 import '../widgets/loading_spinner.dart';
 
-/// The main game screen.
-/// 
-/// Flow:
-/// 1. Show NickEntry form (no active game)
-/// 2. Show active game (sequence, input, lives, score)
-/// 3. Show game over screen (final score, leaderboard rank)
 class GameScreen extends StatelessWidget {
   const GameScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<GameProvider>(
-      builder: (context, provider, _) {
-        if (provider.isLoading && provider.gameState == null) {
-          return const LoadingSpinner(message: 'Starting game...');
-        }
+    final provider = context.watch<GameProvider>();
+    final s = context.watch<LanguageProvider>().strings;
 
-        if (provider.gameState == null) {
-          return _NickEntryView(provider: provider);
-        }
-
-        if (provider.gameState!.isGameOver) {
-          return _GameOverView(provider: provider);
-        }
-
-        return _ActiveGameView(provider: provider);
-      },
-    );
+    if (provider.isLoading && provider.gameState == null) {
+      return LoadingSpinner(message: s.startingGame);
+    }
+    if (provider.gameState == null) {
+      return _NickEntryView(provider: provider);
+    }
+    if (provider.gameState!.isGameOver) {
+      return _GameOverView(provider: provider);
+    }
+    return _ActiveGameView(provider: provider);
   }
 }
 
@@ -47,7 +39,6 @@ class GameScreen extends StatelessWidget {
 
 class _NickEntryView extends StatefulWidget {
   final GameProvider provider;
-
   const _NickEntryView({required this.provider});
 
   @override
@@ -73,6 +64,7 @@ class _NickEntryViewState extends State<_NickEntryView> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final s = context.watch<LanguageProvider>().strings;
 
     return Center(
       child: SingleChildScrollView(
@@ -83,41 +75,36 @@ class _NickEntryViewState extends State<_NickEntryView> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Logo / title
-              Container(
-                width: 80,
-                height: 80,
-                margin: const EdgeInsets.only(bottom: 24),
-                decoration: BoxDecoration(
-                  color: AppTheme.primary.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: AppTheme.primary, width: 2),
-                ),
-                child: const Center(
-                  child: Text(
-                    'F(n)',
-                    style: TextStyle(
-                      color: AppTheme.primary,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                    ),
+              // Logo
+              Center(
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  margin: const EdgeInsets.only(bottom: 24),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: AppTheme.primary, width: 2),
+                  ),
+                  child: const Center(
+                    child: Text('F(n)',
+                        style: TextStyle(
+                            color: AppTheme.primary,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700)),
                   ),
                 ),
               ),
-              Text(
-                'Fibonacci Game',
-                style: theme.textTheme.displayMedium,
-                textAlign: TextAlign.center,
-              ),
+              Text(s.appTitle,
+                  style: theme.textTheme.displayMedium,
+                  textAlign: TextAlign.center),
               const SizedBox(height: 8),
-              Text(
-                'How far can you go in the sequence?',
-                style: theme.textTheme.bodyMedium,
-                textAlign: TextAlign.center,
-              ),
+              Text(s.subtitleHowFar,
+                  style: theme.textTheme.bodyMedium,
+                  textAlign: TextAlign.center),
               const SizedBox(height: 40),
 
-              // Nick entry form
+              // Form
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
@@ -126,57 +113,41 @@ class _NickEntryViewState extends State<_NickEntryView> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(
-                          'Enter your name',
-                          style: theme.textTheme.titleLarge,
-                        ),
+                        Text(s.enterYourName, style: theme.textTheme.titleLarge),
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: _nameController,
-                          decoration: const InputDecoration(
-                            labelText: 'Nick or name',
-                            hintText: 'e.g. Jasiu',
-                            prefixIcon: Icon(Icons.person_outline),
+                          decoration: InputDecoration(
+                            labelText: s.nickLabel,
+                            hintText: s.nickHint,
+                            prefixIcon: const Icon(Icons.person_outline),
                           ),
                           textInputAction: TextInputAction.done,
                           onFieldSubmitted: (_) => _startGame(),
                           maxLength: 100,
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Please enter your name';
-                            }
-                            if (value.trim().length < 1) {
-                              return 'Name too short';
-                            }
-                            return null;
-                          },
+                          validator: (v) => (v == null || v.trim().isEmpty)
+                              ? s.nickValidationEmpty
+                              : null,
                         ),
-                        const SizedBox(height: 16),
-
-                        // Error message if API failed
+                        const SizedBox(height: 8),
                         if (widget.provider.errorMessage != null)
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
-                            child: Text(
-                              widget.provider.errorMessage!,
-                              style: const TextStyle(color: AppTheme.error),
-                              textAlign: TextAlign.center,
-                            ),
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Text(widget.provider.errorMessage!,
+                                style: const TextStyle(color: AppTheme.error),
+                                textAlign: TextAlign.center),
                           ),
-
                         ElevatedButton.icon(
-                          onPressed: widget.provider.isLoading ? null : _startGame,
+                          onPressed:
+                              widget.provider.isLoading ? null : _startGame,
                           icon: widget.provider.isLoading
                               ? const SizedBox(
                                   width: 20,
                                   height: 20,
                                   child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
+                                      strokeWidth: 2, color: Colors.white))
                               : const Icon(Icons.play_arrow_rounded),
-                          label: const Text('Start Game'),
+                          label: Text(s.startGame),
                         ),
                       ],
                     ),
@@ -192,28 +163,13 @@ class _NickEntryViewState extends State<_NickEntryView> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('How to play', style: theme.textTheme.titleLarge),
+                      Text(s.howToPlay, style: theme.textTheme.titleLarge),
                       const SizedBox(height: 12),
-                      _RuleItem(
-                        icon: Icons.looks_one_outlined,
-                        text: 'You start with sequence: 0, 1',
-                      ),
-                      _RuleItem(
-                        icon: Icons.edit_outlined,
-                        text: 'Guess the next Fibonacci number',
-                      ),
-                      _RuleItem(
-                        icon: Icons.add_circle_outline,
-                        text: '+1 point for each correct answer',
-                      ),
-                      _RuleItem(
-                        icon: Icons.favorite_outlined,
-                        text: '3 lives — wrong answers cost you one',
-                      ),
-                      _RuleItem(
-                        icon: Icons.emoji_events_outlined,
-                        text: 'Top 10 results saved to leaderboard',
-                      ),
+                      _RuleItem(icon: Icons.looks_one_outlined, text: s.ruleStartSequence),
+                      _RuleItem(icon: Icons.edit_outlined, text: s.ruleGuess),
+                      _RuleItem(icon: Icons.add_circle_outline, text: s.ruleCorrect),
+                      _RuleItem(icon: Icons.favorite_outlined, text: s.ruleWrong),
+                      _RuleItem(icon: Icons.emoji_events_outlined, text: s.ruleLeaderboard),
                     ],
                   ),
                 ),
@@ -229,7 +185,6 @@ class _NickEntryViewState extends State<_NickEntryView> {
 class _RuleItem extends StatelessWidget {
   final IconData icon;
   final String text;
-
   const _RuleItem({required this.icon, required this.text});
 
   @override
@@ -241,8 +196,7 @@ class _RuleItem extends StatelessWidget {
           Icon(icon, color: AppTheme.primary, size: 18),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(text, style: Theme.of(context).textTheme.bodyMedium),
-          ),
+              child: Text(text, style: Theme.of(context).textTheme.bodyMedium)),
         ],
       ),
     );
@@ -255,7 +209,6 @@ class _RuleItem extends StatelessWidget {
 
 class _ActiveGameView extends StatefulWidget {
   final GameProvider provider;
-
   const _ActiveGameView({required this.provider});
 
   @override
@@ -273,19 +226,20 @@ class _ActiveGameViewState extends State<_ActiveGameView> {
     super.dispose();
   }
 
-  void _submitAnswer() {
+  void _submitAnswer(AppStrings s) {
     final text = _answerController.text.trim();
     if (text.isEmpty) return;
 
-    final answer = int.tryParse(text);
-    if (answer == null) {
+    // Validate it's a valid non-negative integer string
+    if (!RegExp(r'^\d+$').hasMatch(text)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid number')),
+        SnackBar(content: Text(s.invalidNumber)),
       );
       return;
     }
 
-    widget.provider.submitAnswer(answer);
+    // Pass the raw string — GameProvider/ApiService handles precision
+    widget.provider.submitAnswer(text);
     _answerController.clear();
     _focusNode.requestFocus();
   }
@@ -293,148 +247,138 @@ class _ActiveGameViewState extends State<_ActiveGameView> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final s = context.watch<LanguageProvider>().strings;
     final state = widget.provider.gameState!;
 
-    return LayoutBuilder(builder: (context, constraints) {
-      final isWide = constraints.maxWidth > 700;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 700),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header
+              _GameHeader(state: state),
+              const SizedBox(height: 24),
 
-      return SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 700),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Header: player name, score, lives
-                _GameHeader(state: state),
-                const SizedBox(height: 24),
-
-                // Sequence display
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Sequence so far:', style: theme.textTheme.bodyMedium),
-                        const SizedBox(height: 12),
-                        SequenceDisplay(
-                          sequence: state.sequence,
-                          lastWasCorrect: state.lastAnswerCorrect,
-                        ),
-                      ],
-                    ),
+              // Sequence card — multiline Wrap
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(s.sequenceSoFar,
+                          style: theme.textTheme.bodyMedium),
+                      const SizedBox(height: 12),
+                      SequenceDisplay(
+                        sequence: state.sequence,
+                        lastWasCorrect: state.lastAnswerCorrect,
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
+              ),
+              const SizedBox(height: 16),
 
-                // Feedback banner (shown after submitting)
-                if (state.lastMessage != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: AnswerFeedbackBanner(
-                      isCorrect: state.lastAnswerCorrect ?? false,
-                      message: state.lastMessage!,
-                    ),
+              // Feedback banner
+              if (state.lastMessage != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: AnswerFeedbackBanner(
+                    isCorrect: state.lastAnswerCorrect ?? false,
+                    message: state.lastMessage!,
                   ),
+                ),
 
-                // Error message (API errors)
-                if (widget.provider.errorMessage != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: AnswerFeedbackBanner(
-                      isCorrect: false,
-                      message: widget.provider.errorMessage!,
-                    ),
+              // API error banner
+              if (widget.provider.errorMessage != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: AnswerFeedbackBanner(
+                    isCorrect: false,
+                    message: widget.provider.errorMessage!,
                   ),
+                ),
 
-                // Answer input
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          'What comes next?',
-                          style: theme.textTheme.titleLarge,
-                        ),
-                        Text(
-                          'Position: F(${state.currentIndex})',
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _answerController,
-                                focusNode: _focusNode,
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                ],
-                                decoration: const InputDecoration(
-                                  labelText: 'Your answer',
-                                  hintText: 'Enter a number',
-                                  prefixIcon: Icon(Icons.calculate_outlined),
-                                ),
-                                onSubmitted: (_) => _submitAnswer(),
+              // Answer input card
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(s.whatComesNext, style: theme.textTheme.titleLarge),
+                      Text(s.positionLabel(state.currentIndex),
+                          style: theme.textTheme.bodyMedium),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _answerController,
+                              focusNode: _focusNode,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              decoration: InputDecoration(
+                                labelText: s.yourAnswer,
+                                hintText: s.enterNumber,
+                                prefixIcon:
+                                    const Icon(Icons.calculate_outlined),
                               ),
+                              onSubmitted: (_) => _submitAnswer(s),
                             ),
-                            const SizedBox(width: 12),
-                            ElevatedButton.icon(
-                              onPressed: state.isLoading ? null : _submitAnswer,
-                              icon: state.isLoading
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
+                          ),
+                          const SizedBox(width: 12),
+                          ElevatedButton.icon(
+                            onPressed: state.isLoading
+                                ? null
+                                : () => _submitAnswer(s),
+                            icon: state.isLoading
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : const Icon(Icons.check_rounded),
-                              label: const Text('Confirm'),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                                        color: Colors.white))
+                                : const Icon(Icons.check_rounded),
+                            label: Text(s.confirm),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
-      );
-    });
+      ),
+    );
   }
 }
 
 class _GameHeader extends StatelessWidget {
   final GameState state;
-
   const _GameHeader({required this.state});
 
   @override
   Widget build(BuildContext context) {
+    final s = context.watch<LanguageProvider>().strings;
     return Row(
       children: [
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                state.playerName,
-                style: Theme.of(context).textTheme.headlineMedium,
-                overflow: TextOverflow.ellipsis,
-              ),
-              Text(
-                'Keep guessing!',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
+              Text(state.playerName,
+                  style: Theme.of(context).textTheme.headlineMedium,
+                  overflow: TextOverflow.ellipsis),
+              Text(s.keepGuessing,
+                  style: Theme.of(context).textTheme.bodyMedium),
             ],
           ),
         ),
@@ -452,12 +396,12 @@ class _GameHeader extends StatelessWidget {
 
 class _GameOverView extends StatelessWidget {
   final GameProvider provider;
-
   const _GameOverView({required this.provider});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final s = context.watch<LanguageProvider>().strings;
     final state = provider.gameState!;
     final savedResult = provider.savedResult;
 
@@ -470,28 +414,19 @@ class _GameOverView extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Game over icon
               const Center(
-                child: Icon(
-                  Icons.sentiment_dissatisfied_rounded,
-                  color: AppTheme.error,
-                  size: 64,
-                ),
+                child: Icon(Icons.sentiment_dissatisfied_rounded,
+                    color: AppTheme.error, size: 64),
               ),
               const SizedBox(height: 16),
-              Text(
-                'Game Over!',
-                style: theme.textTheme.displayMedium?.copyWith(
-                  color: AppTheme.error,
-                ),
-                textAlign: TextAlign.center,
-              ),
+              Text(s.gameOver,
+                  style: theme.textTheme.displayMedium
+                      ?.copyWith(color: AppTheme.error),
+                  textAlign: TextAlign.center),
               const SizedBox(height: 8),
-              Text(
-                'Better luck next time, ${state.playerName}!',
-                style: theme.textTheme.bodyLarge,
-                textAlign: TextAlign.center,
-              ),
+              Text(s.betterLuck(state.playerName),
+                  style: theme.textTheme.bodyLarge,
+                  textAlign: TextAlign.center),
               const SizedBox(height: 32),
 
               // Score card
@@ -500,76 +435,71 @@ class _GameOverView extends StatelessWidget {
                   padding: const EdgeInsets.all(24),
                   child: Column(
                     children: [
-                      Text('Final Score', style: theme.textTheme.bodyMedium),
+                      Text(s.finalScore, style: theme.textTheme.bodyMedium),
                       const SizedBox(height: 8),
                       Text(
                         state.score.toString(),
                         style: theme.textTheme.displayLarge?.copyWith(
-                          color: AppTheme.primary,
-                          fontWeight: FontWeight.w800,
-                        ),
+                            color: AppTheme.primary,
+                            fontWeight: FontWeight.w800),
                         textAlign: TextAlign.center,
                       ),
-                      Text('points', style: theme.textTheme.bodyMedium),
-                      if (savedResult != null) ...[
-                        const Divider(height: 24),
+                      Text(s.points, style: theme.textTheme.bodyMedium),
+                      const Divider(height: 24),
+                      if (savedResult != null)
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
-                              _getRankIcon(savedResult.rank),
-                              color: _getRankColor(savedResult.rank),
-                            ),
+                            Icon(_getRankIcon(savedResult.rank),
+                                color: _getRankColor(savedResult.rank)),
                             const SizedBox(width: 8),
-                            Text(
-                              'Rank #${savedResult.rank} on leaderboard!',
-                              style: theme.textTheme.bodyLarge?.copyWith(
-                                color: _getRankColor(savedResult.rank),
-                                fontWeight: FontWeight.w600,
+                            Flexible(
+                              child: Text(
+                                s.rankLabel(savedResult.rank),
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                    color: _getRankColor(savedResult.rank),
+                                    fontWeight: FontWeight.w600),
                               ),
                             ),
                           ],
+                        )
+                      else
+                        Column(
+                          children: [
+                            Text(s.savingScore,
+                                style: theme.textTheme.bodyMedium),
+                            const SizedBox(height: 8),
+                            const LinearProgressIndicator(),
+                          ],
                         ),
-                      ] else ...[
-                        const Divider(height: 24),
-                        Text(
-                          'Saving your score...',
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                        const SizedBox(height: 8),
-                        const LinearProgressIndicator(),
-                      ],
                     ],
                   ),
                 ),
               ),
               const SizedBox(height: 16),
 
-              // Sequence reached
+              // Reached index
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Row(
                     children: [
-                      const Icon(Icons.format_list_numbered, color: AppTheme.primary),
+                      const Icon(Icons.format_list_numbered,
+                          color: AppTheme.primary),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: Text(
-                          'Reached F(${state.currentIndex}) in the sequence',
-                          style: theme.textTheme.bodyLarge,
-                        ),
-                      ),
+                          child: Text(s.reachedLabel(state.currentIndex),
+                              style: theme.textTheme.bodyLarge)),
                     ],
                   ),
                 ),
               ),
               const SizedBox(height: 24),
 
-              // Play again button
               ElevatedButton.icon(
                 onPressed: () => provider.resetGame(),
                 icon: const Icon(Icons.replay_rounded),
-                label: const Text('Play Again'),
+                label: Text(s.playAgain),
               ),
             ],
           ),
@@ -581,8 +511,7 @@ class _GameOverView extends StatelessWidget {
   IconData _getRankIcon(int rank) {
     if (rank == 1) return Icons.emoji_events_rounded;
     if (rank <= 3) return Icons.military_tech_rounded;
-    if (rank <= 10) return Icons.leaderboard_rounded;
-    return Icons.sports_score_rounded;
+    return Icons.leaderboard_rounded;
   }
 
   Color _getRankColor(int rank) {
@@ -592,3 +521,5 @@ class _GameOverView extends StatelessWidget {
     return AppTheme.primary;
   }
 }
+
+
